@@ -1,0 +1,2 @@
+pydantic[email]
+bcrypt==3.2.0
