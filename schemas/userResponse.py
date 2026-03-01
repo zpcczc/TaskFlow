@@ -2,7 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, EmailStr, Field, validator
 from typing import Optional
-class UserModel(BaseModel):
+class UserResponse(BaseModel):
     id:int
     email: EmailStr
     username: str
@@ -10,7 +10,7 @@ class UserModel(BaseModel):
 
 
 
-class UserRegisterResponse(UserModel):
+class UserRegisterResponse(UserResponse):
     id: int
     is_active: bool
     created_at: datetime
@@ -20,7 +20,7 @@ class UserRegisterResponse(UserModel):
 
 
 class UserLoginResponse(BaseModel):
-    user:UserModel
+    user:UserResponse
     access_token: str
     refresh_token: str
 

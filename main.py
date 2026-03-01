@@ -1,8 +1,9 @@
 from fastapi import FastAPI
-from routers import user,auth
+from routers import user,auth,task
 app = FastAPI()
 app.include_router(user.router) # 添加路由
 app.include_router(auth.router) # 添加路由
+app.include_router(task.router)
 
 
 @app.get("/")
