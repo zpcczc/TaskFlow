@@ -10,4 +10,7 @@ from models import AsyncSessionFactory
 async def get_db():
     """依赖项：获取异步数据库会话"""
     async with AsyncSessionFactory() as session:
-        yield session
+        try:
+            yield session
+        finally:
+            await session.close()

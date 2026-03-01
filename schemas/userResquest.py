@@ -19,10 +19,6 @@ class UserCreate(UserBase):
             raise ValueError('密码必须包含至少一个字母')
         return v
 
-class UserResponse(BaseModel):
-    id: int
-    is_active: bool
-    created_at: datetime
-
-    class Config:
-        from_attributes = True
+class UserLoginIn(BaseModel):
+    email: EmailStr
+    password: str
