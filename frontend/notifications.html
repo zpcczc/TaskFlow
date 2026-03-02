@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>通知中心 · TaskFlow</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="main-container">
+        <div class="header">
+            <h1>TaskFlow · 通知中心</h1>
+            <div class="header-right">
+                <span class="user-info" id="user-name"></span>
+                <button class="logout-btn" id="logout-btn">退出</button>
+            </div>
+        </div>
+        <div class="content">
+            <div style="margin-bottom: 16px;">
+                <button id="load-more-btn" class="primary">加载更多</button>
+            </div>
+            <div class="notification-list" id="notification-list"></div>
+        </div>
+    </div>
+    <script type="module" src="js/notifications.js"></script>
+</body>
+</html>

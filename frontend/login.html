@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 · TaskFlow</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-card">
+            <h2>TaskFlow</h2>
+            <div class="auth-tabs">
+                <div class="auth-tab active" data-tab="login">登录</div>
+                <div class="auth-tab" data-tab="register">注册</div>
+            </div>
+            <div class="auth-form" id="login-form" style="display: block;">
+                <input type="email" id="login-email" placeholder="邮箱" required>
+                <input type="password" id="login-password" placeholder="密码" required>
+                <button id="login-btn">登录</button>
+                <div class="error-msg" id="login-error"></div>
+            </div>
+            <div class="auth-form" id="register-form" style="display: none;">
+                <input type="email" id="register-email" placeholder="邮箱" required>
+                <input type="text" id="register-username" placeholder="用户名" required>
+                <input type="password" id="register-password" placeholder="密码" required>
+                <button id="register-btn">注册</button>
+                <div class="error-msg" id="register-error"></div>
+            </div>
+        </div>
+    </div>
+    <script type="module" src="js/auth.js"></script>
+    <script type="module">
+        import { login, register } from './js/auth.js';
+
+        // 如果已登录，直接跳转到任务页
+        if (localStorage.getItem('access_token')) {
+            window.location.href = '/tasks.html';
+        }
+
+        // 选项卡切换
+        document.querySelectorAll('.auth-tab').forEach(tab => {
+            tab.addEventListener('click', (e) => {
+                document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+                e.target.classList.add('active');
+                const tabName = e.target.dataset.tab;
+                document.getElementById('login-form').style.display = tabName === 'login' ? 'block' : 'none';
+                document.getElementById('register-form').style.display = tabName === 'register' ? 'block' : 'none';
+            });
+        });
+
+        document.getElementById('login-btn').addEventListener('click', async () => {
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            const errorDiv = document.getElementById('login-error');
+            const result = await login(email, password);
+            if (result.success) {
+                window.location.href = '/tasks.html';
+            } else {
+                errorDiv.textContent = result.error;
+            }
+        });
+
+        document.getElementById('register-btn').addEventListener('click', async () => {
+            const email = document.getElementById('register-email').value;
+            const username = document.getElementById('register-username').value;
+            const password = document.getElementById('register-password').value;
+            const errorDiv = document.getElementById('register-error');
+            const result = await register(email, username, password);
+            if (result.success) {
+                window.location.href = '/tasks.html';
+            } else {
+                errorDiv.textContent = result.error;
+            }
+        });
+    </script>
+</body>
+</html>

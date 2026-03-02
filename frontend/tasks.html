@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>任务管理 · TaskFlow</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="main-container">
+        <div class="header">
+            <h1>TaskFlow · 任务管理</h1>
+            <div class="header-right">
+                <span class="user-info" id="user-name"></span>
+                <button class="logout-btn" id="logout-btn">退出</button>
+            </div>
+        </div>
+        <div class="content">
+            <div class="create-task">
+                <h3>➕ 创建新任务</h3>
+                <div class="form-row">
+                    <input type="text" id="new-task-title" placeholder="任务标题" required>
+                </div>
+                <div class="form-row">
+                    <textarea id="new-task-description" placeholder="任务描述" rows="2"></textarea>
+                </div>
+                <div class="form-row">
+                    <select id="new-task-priority">
+                        <option value="low">低优先级</option>
+                        <option value="medium" selected>中优先级</option>
+                        <option value="high">高优先级</option>
+                    </select>
+                    <input type="datetime-local" id="new-task-due">
+                </div>
+                <div class="form-row">
+                    <button class="primary" id="create-task-btn">创建任务</button>
+                </div>
+            </div>
+            <div class="task-list" id="task-list"></div>
+        </div>
+    </div>
+    <script type="module" src="js/tasks.js"></script>
+</body>
+</html>
