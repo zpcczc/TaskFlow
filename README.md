@@ -1,7 +1,11 @@
 项目基于FastAPI，具体文档参考https://www.yuque.com/jiandan-lkl0d/fp9m6r/oagqmlzxsl86cuu0
 FastAPI官方文档：https://fastapi.tiangolo.com/zh/
 pydantic文档：https://pydantic.com.cn/
-TaskFlow是一个基于FastAPI构建的 Web 应用项目，聚焦于任务管理类场景，具备完整的后端架构设计和基础前端页面支撑。以下是对仓库核心结构、技术栈和功能定位的详细介绍：
+
+
+TaskFlow是一个基于FastAPI构建的 Web 应用项目，聚焦于任务管理类场景，
+具备完整的后端架构设计和基础前端页面支撑。
+以下是对仓库核心结构、技术栈和功能定位的详细介绍：
 一、核心技术栈
 ● 后端框架：FastAPI（轻量、高性能，支持自动接口文档、异步编程）
 ● 数据校验：Pydantic（定义请求 / 响应数据结构，实现严格的数据校验）
