@@ -24,3 +24,6 @@ class UserLoginResponse(BaseModel):
     access_token: str
     refresh_token: str
 
+class UsersResponse(BaseModel):
+    id: int
+    username: str

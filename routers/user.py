@@ -1,12 +1,16 @@
+from typing import List
+
 from fastapi import APIRouter, Depends, HTTPException,status
 from sqlalchemy import select,update
+from sqlalchemy.ext.asyncio import AsyncSession
+from deps import dbdeps,userdeps
 from core.atoken import AuthHandler
 from deps.dbdeps import get_db
-from schemas.userResponse import UserResponse
+from schemas.userResponse import UserResponse,UsersResponse
 from models.user import User
 from schemas import userResponse,userResquest
 from core.security import get_password_hash,verify_password
-router = APIRouter(prefix="/user", tags=["用户"])
+router = APIRouter()
 auth_handler = AuthHandler()  # 单例模式实例全局化对象
 
 @router.get("/me",response_model=UserResponse)
@@ -33,7 +37,7 @@ async def update_user(user_in: userResquest.UserUpdate,user_id: int=Depends(auth
         else:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="该邮箱已被注册",
+                detail="用户名已被使用",
             )
     if user_in.password is not None:
         if user_in.old_password is None:
@@ -52,5 +56,17 @@ async def update_user(user_in: userResquest.UserUpdate,user_id: int=Depends(auth
     await db.commit()
     await db.refresh(user)
     return user
-
+@router.get("/", response_model=List[UsersResponse])
+async def read_users(
+    db: AsyncSession = Depends(dbdeps.get_db),
+    current_user: User = Depends(userdeps.get_current_user),
+    skip: int = 0,
+    limit: int = 100,
+):
+    """
+    获取所有用户（分页），返回 id 和 username
+    """
+    result = await db.execute(select(User).offset(skip).limit(limit))
+    users = result.scalars().all()
+    return users
 

@@ -8,7 +8,8 @@ from typing import List
 from schemas import taskRequest
 from models.task import Task
 from models.user import User
-
+from models.notification import Notification
+from WebSocket.manager import manager
 
 class TaskService:
     # 这里使用了python中的静态方法，即后续的调用中可以通过类名直接调用而不用在创建一个类的实例
@@ -27,6 +28,25 @@ class TaskService:
             .where(Task.id == task.id)
             .options(selectinload(Task.creator), selectinload(Task.assignees))
             # selectinload 在查询Task的时候，也查询了关系表，相当于把Task.creator和Task.assignees加载了出来，以防后续加载不出来
+        )
+        # 创建通知给创建者
+        notif = Notification(
+            user_id=creator_id,
+            task_id=task.id,
+            message=f"您创建了任务：{task.title}"
+        )
+        db.add(notif)
+        await db.commit()
+
+        # WebSocket 通知
+        await manager.send_personal_message(
+            creator_id,
+            {
+                "type": "task_created",
+                "task_id": task.id,
+                "title": task.title,
+                "message": f"您创建了任务：{task.title}"
+            }
         )
         return result.scalar_one()
     @staticmethod
@@ -81,24 +101,83 @@ class TaskService:
         2.setattr(task, field, value)动态地将 task 对象的属性 field 设置为新的值 value。
         这行代码相当于执行类似 task.title = new_title 的操作，但字段名是动态的。
         """
+        # 记录旧状态
+        old_status = task.status
+
+        # 只更新提供的字段
         update_data = task_in.dict(exclude_unset=True)
         for field, value in update_data.items():
             setattr(task, field, value)
-            await db.commit()
-            await db.refresh(task)
-            result = await db.execute(
-                select(Task).where(Task.id == task.id)
-                .options(selectinload(Task.creator), selectinload(Task.assignees))
-            )
-            return result.scalar_one()
+
+        # 提交所有更改
+        await db.commit()
+        # 刷新以获取最新数据
+        await db.refresh(task)
+        # 重新加载关系（如果后续需要用到 assignees）
+        await db.refresh(task, ["assignees"])
+
+        # 检查状态是否变化
+        if 'status' in update_data and old_status != task.status:
+            # 收集需要通知的用户：创建者 + 所有执行者
+            user_ids = {task.creator_id}
+            user_ids.update(a.id for a in task.assignees)
+
+            # 1. 存入数据库通知
+            notifications = []
+            for uid in user_ids:
+                notif = Notification(
+                    user_id=uid,
+                    task_id=task.id,
+                    message=f"任务 '{task.title}' 状态从 {old_status.value} 变为 {task.status.value}"
+                )
+                notifications.append(notif)
+            db.add_all(notifications)
+            await db.commit()  # 提交通知
+
+            # 2. 发送 WebSocket 实时消息
+            for uid in user_ids:
+                await manager.send_personal_message(
+                    uid,
+                    {
+                        "type": "task_status_changed",
+                        "task_id": task.id,
+                        "old_status": old_status.value,
+                        "new_status": task.status.value,
+                        "message": f"任务 '{task.title}' 状态已变更"
+                    }
+                )
+
+        # 最终返回完整的任务对象（包含关系）
+        result = await db.execute(
+            select(Task)
+            .where(Task.id == task.id)
+            .options(selectinload(Task.creator), selectinload(Task.assignees))
+        )
+        return result.scalar_one()
 
     @staticmethod
     async def delete_task(db: AsyncSession, task: Task) -> None:
+        # 预先加载 assignees
+        await db.refresh(task, ["assignees"])
+        user_ids = {task.creator_id}
+        user_ids.update(a.id for a in task.assignees)
+        # 发送通知（可以先发 WebSocket，再删任务）
+        for uid in user_ids:
+            await manager.send_personal_message(
+                uid,
+                {
+                    "type": "task_deleted",
+                    "task_id": task.id,
+                    "title": task.title,
+                    "message": f"任务 '{task.title}' 已被删除"
+                }
+            )
+        # Notification 中 task_id 设置了 ondelete="CASCADE"，删除任务时会自动删除关联的通知。
         await db.delete(task)
         await db.commit()
 
     @staticmethod
-    async def add_assignee(db: AsyncSession, task: Task, user_id: int) -> Task:
+    async def add_assignee(db: AsyncSession, task: Task, user_id: int):
         # 检查用户是否存在
         user = await db.get(User, user_id)
         if not user:
@@ -107,6 +186,26 @@ class TaskService:
             task.assignees.append(user)
             await db.commit()
             await db.refresh(task)
+
+            # 创建通知给被分配者
+            notif = Notification(
+                user_id=user_id,
+                task_id=task.id,
+                message=f"您被分配了任务：{task.title}"
+            )
+            db.add(notif)
+            await db.commit()
+
+            # WebSocket 通知
+            await manager.send_personal_message(
+                user_id,
+                {
+                    "type": "task_assigned",
+                    "task_id": task.id,
+                    "title": task.title,
+                    "message": f"您被分配了任务：{task.title}"
+                }
+            )
         return task
 
     @staticmethod

@@ -9,7 +9,7 @@ from models.user import User
 from services.task import TaskService
 from typing import List,Optional
 
-router = APIRouter(prefix="/task", tags=["任务"])
+router = APIRouter()
 
 
 @router.post('/',response_model=TaskResponse)
