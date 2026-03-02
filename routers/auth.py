@@ -7,7 +7,7 @@ from schemas import userResponse,userResquest
 from models.user import User
 from core.atoken import AuthHandler
 
-router = APIRouter(prefix="/auth", tags=["认证"])
+router = APIRouter()
 auth_handler = AuthHandler()  # 单例模式实例全局化对象
 
 
@@ -20,6 +20,7 @@ async def register_user(user_in:userResquest.UserCreate,db:AsyncSession = Depend
     - 创建新用户
     - 返回用户信息（不包含密码）
     """
+    print("收到的用户数据:", user_in.dict())
     # 检查邮箱是否存在
     existing_email = await db.execute(
         select(User).where(User.email == user_in.email)
