@@ -1,7 +1,9 @@
-from fastapi import APIRouter, Depends, Query
+
+from fastapi import APIRouter, Depends, Query,Header, HTTPException
+from oss2.exceptions import status
 from sqlalchemy.ext.asyncio import AsyncSession
 from deps import dbdeps, userdeps
-from schemas.taskRequest import TaskRequest,TaskPriority,TaskStatus
+from schemas.taskRequest import TaskRequest,TaskPriority,TaskStatus,TaskUpdate
 from schemas.taskResponse import TaskResponse
 from models.user import User
 from services.task import TaskService
@@ -37,3 +39,62 @@ async def read_tasks(
         db, skip, limit, status, priority, creator_id, assignee_id
     )
     return tasks
+@router.get('/{task_id}',response_model=TaskResponse)
+async def read_task(
+        task_id: int,
+        db: AsyncSession = Depends(dbdeps.get_db),
+        current_user: User = Depends(userdeps.get_current_user),
+):
+    # 获取任务详情
+    task = await TaskService.get_task(db, task_id)
+    # 权限控制：只允许创建者和参与者查看
+    if task.creator_id != current_user.id and current_user not in task.assignees:
+        raise HTTPException(status_code=403,detail='无权查看此任务')
+    return task
+@router.patch('/{task_id}',response_model=TaskResponse)
+async def update_task(
+        task_id: int,
+        task_in: TaskUpdate,
+        db: AsyncSession = Depends(dbdeps.get_db),
+        current_user: User = Depends(userdeps.get_current_user),
+):
+    task = await TaskService.get_task(db, task_id)
+    if task.creator_id != current_user.id and current_user not in task.assignees:
+        raise HTTPException(status_code=403,detail="无权修改此任务")
+    updated_task = await TaskService.update_task(db, task_id, task_in)
+    return updated_task
+@router.delete('/{task_id}',status_code=204)  # status_code=204 表示删除成功并且不返回任何响应
+async def delete_task(
+        task_id: int,
+        db: AsyncSession = Depends(dbdeps.get_db),
+        current_user: User = Depends(userdeps.get_current_user),
+):
+    task = await TaskService.get_task(db, task_id)
+    if task.creator_id != current_user.id:
+        raise HTTPException(status_code=403,detail="无权删除此任务")
+    await TaskService.delete_task(db, task)
+@router.post('/{task_id}/assignees/{user_id}',response_model=TaskResponse)
+async def add_assignee(
+        task_id: int,
+        user_id: int,
+        db: AsyncSession = Depends(dbdeps.get_db),
+        current_user: User = Depends(userdeps.get_current_user),
+):
+    # 添加任务执行者，仅创建者可以操作
+    task = await TaskService.get_task(db, task_id)
+    if task.creator_id != current_user.id:
+        raise HTTPException(status_code=403,detail="无权添加其他用户")
+    task = await TaskService.add_assignee(db, task, user_id)
+    return task
+@router.delete('/{task_id}/assignees/{user_id}',response_model=TaskResponse)
+async def remove_assignee(
+        task_id: int,
+        user_id: int,
+        db: AsyncSession = Depends(dbdeps.get_db),
+        current_user: User = Depends(userdeps.get_current_user),
+):
+    task = await TaskService.get_task(db, task_id)
+    if task.creator_id != current_user.id:
+        raise HTTPException(status_code=403,detail="无权移除其他参与者")
+    task = await TaskService.remove_assignee(db, task, user_id)
+    return task
