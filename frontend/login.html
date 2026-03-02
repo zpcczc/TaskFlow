@@ -5,27 +5,54 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>登录 · TaskFlow</title>
     <link rel="stylesheet" href="css/style.css">
+    <!-- 如果无法访问 Google Fonts，可注释掉以下三行 -->
+    <!-- <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet"> -->
 </head>
-<body>
-    <div class="auth-container">
+<body class="login-page">
+    <div class="auth-page">
         <div class="auth-card">
-            <h2>TaskFlow</h2>
+            <div class="auth-header">
+                <h1>TaskFlow</h1>
+                <p>欢迎回来，请登录以继续</p>
+            </div>
             <div class="auth-tabs">
-                <div class="auth-tab active" data-tab="login">登录</div>
-                <div class="auth-tab" data-tab="register">注册</div>
+                <button class="auth-tab active" data-tab="login">登录</button>
+                <button class="auth-tab" data-tab="register">注册</button>
+                <span class="tab-slider"></span>
             </div>
-            <div class="auth-form" id="login-form" style="display: block;">
-                <input type="email" id="login-email" placeholder="邮箱" required>
-                <input type="password" id="login-password" placeholder="密码" required>
-                <button id="login-btn">登录</button>
-                <div class="error-msg" id="login-error"></div>
-            </div>
-            <div class="auth-form" id="register-form" style="display: none;">
-                <input type="email" id="register-email" placeholder="邮箱" required>
-                <input type="text" id="register-username" placeholder="用户名" required>
-                <input type="password" id="register-password" placeholder="密码" required>
-                <button id="register-btn">注册</button>
-                <div class="error-msg" id="register-error"></div>
+            <div class="auth-forms">
+                <!-- 登录表单 -->
+                <form class="auth-form active" id="login-form" onsubmit="return false;">
+                    <div class="input-group">
+                        <input type="email" id="login-email" placeholder=" " required>
+                        <label for="login-email">邮箱</label>
+                    </div>
+                    <div class="input-group">
+                        <input type="password" id="login-password" placeholder=" " required>
+                        <label for="login-password">密码</label>
+                    </div>
+                    <button type="submit" class="auth-button" id="login-btn">登录</button>
+                    <div class="error-msg" id="login-error"></div>
+                </form>
+                <!-- 注册表单 -->
+                <form class="auth-form" id="register-form" onsubmit="return false;">
+                    <div class="input-group">
+                        <input type="email" id="register-email" placeholder=" " required>
+                        <label for="register-email">邮箱</label>
+                    </div>
+                    <div class="input-group">
+                        <input type="text" id="register-username" placeholder=" " required>
+                        <label for="register-username">用户名</label>
+                    </div>
+                    <div class="input-group">
+                        <input type="password" id="register-password" placeholder=" " required>
+                        <label for="register-password">密码</label>
+                    </div>
+                    <button type="submit" class="auth-button" id="register-btn">注册</button>
+                    <div class="error-msg" id="register-error"></div>
+                </form>
             </div>
         </div>
     </div>
@@ -33,22 +60,38 @@
     <script type="module">
         import { login, register } from './js/auth.js';
 
-        // 如果已登录，直接跳转到任务页
         if (localStorage.getItem('access_token')) {
             window.location.href = '/tasks.html';
         }
 
         // 选项卡切换
-        document.querySelectorAll('.auth-tab').forEach(tab => {
-            tab.addEventListener('click', (e) => {
-                document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
-                e.target.classList.add('active');
-                const tabName = e.target.dataset.tab;
-                document.getElementById('login-form').style.display = tabName === 'login' ? 'block' : 'none';
-                document.getElementById('register-form').style.display = tabName === 'register' ? 'block' : 'none';
+        const tabs = document.querySelectorAll('.auth-tab');
+        const forms = document.querySelectorAll('.auth-form');
+        const slider = document.querySelector('.tab-slider');
+
+        function setActiveTab(tabId) {
+            tabs.forEach(t => t.classList.remove('active'));
+            forms.forEach(f => f.classList.remove('active'));
+            document.querySelector(`[data-tab="${tabId}"]`).classList.add('active');
+            document.getElementById(`${tabId}-form`).classList.add('active');
+
+            const activeTab = document.querySelector('.auth-tab.active');
+            slider.style.width = `${activeTab.offsetWidth}px`;
+            slider.style.left = `${activeTab.offsetLeft}px`;
+        }
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                setActiveTab(tab.dataset.tab);
             });
         });
 
+        window.addEventListener('load', () => setActiveTab('login'));
+        window.addEventListener('resize', () => {
+            setActiveTab(document.querySelector('.auth-tab.active').dataset.tab);
+        });
+
+        // 登录
         document.getElementById('login-btn').addEventListener('click', async () => {
             const email = document.getElementById('login-email').value;
             const password = document.getElementById('login-password').value;
@@ -58,9 +101,11 @@
                 window.location.href = '/tasks.html';
             } else {
                 errorDiv.textContent = result.error;
+                errorDiv.style.display = 'block';
             }
         });
 
+        // 注册
         document.getElementById('register-btn').addEventListener('click', async () => {
             const email = document.getElementById('register-email').value;
             const username = document.getElementById('register-username').value;
@@ -71,6 +116,7 @@
                 window.location.href = '/tasks.html';
             } else {
                 errorDiv.textContent = result.error;
+                errorDiv.style.display = 'block';
             }
         });
     </script>

@@ -27,6 +27,13 @@ async function apiRequest(endpoint, options = {}) {
     if (token) {
         headers['Authorization'] = `Bearer ${token}`;
     }
+
+    // // 调试日志
+    // console.log('endpoint:', endpoint);
+    // console.log('token:', token);
+    // console.log('url:', url);
+    // console.log('headers:', headers);
+
     const config = {
         ...options,
         headers,

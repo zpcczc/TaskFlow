@@ -1,21 +1,32 @@
 // tasks.js
 import { apiRequest } from './api.js';
-import { requireAuth, logout } from './auth.js';
+import { requireAuth } from './auth.js';
 
-// 存储所有用户（用于下拉框）
-let allUsers = [];
+// 用户分页相关
+let currentUserPage = 1;
+const userPageSize = 5;
+let currentPageUsers = [];
 
+// WebSocket 相关
+let ws = null;
+
+// 页面加载初始化
 document.addEventListener('DOMContentLoaded', async () => {
     if (!requireAuth()) return;
 
     await loadUserInfo();
-    await loadAllUsers();   // 先加载用户列表
+    await loadUserPage(currentUserPage);
     await loadTasks();
+    await loadUnreadCount();
+    connectWebSocket();
 
     document.getElementById('logout-btn').addEventListener('click', logout);
     document.getElementById('create-task-btn').addEventListener('click', createTask);
+    document.getElementById('prev-user-page').addEventListener('click', prevUserPage);
+    document.getElementById('next-user-page').addEventListener('click', nextUserPage);
 });
 
+// 加载用户信息
 async function loadUserInfo() {
     try {
         const user = await apiRequest('/users/me');
@@ -25,17 +36,39 @@ async function loadUserInfo() {
     }
 }
 
-// 加载所有用户（调整 limit 以获取全部，例如 1000）
-async function loadAllUsers() {
+// 加载用户列表（分页）
+async function loadUserPage(page) {
+    const skip = (page - 1) * userPageSize;
     try {
-        // 可以根据需要调整 limit，如果用户很多可考虑分页加载，这里取 1000 足够大多数场景
-        allUsers = await apiRequest('/users/?limit=1000');
+        const users = await apiRequest(`/users/?skip=${skip}&limit=${userPageSize}`);
+        currentPageUsers = users;
+        document.getElementById('current-user-page').textContent = page;
+        // 更新翻页按钮状态
+        const prevBtn = document.getElementById('prev-user-page');
+        const nextBtn = document.getElementById('next-user-page');
+        prevBtn.disabled = page === 1;
+        nextBtn.disabled = users.length < userPageSize;
     } catch (err) {
         console.error('加载用户列表失败', err);
-        allUsers = [];
+        currentPageUsers = [];
     }
 }
 
+async function prevUserPage() {
+    if (currentUserPage > 1) {
+        currentUserPage--;
+        await loadUserPage(currentUserPage);
+        await loadTasks();
+    }
+}
+
+async function nextUserPage() {
+    currentUserPage++;
+    await loadUserPage(currentUserPage);
+    await loadTasks();
+}
+
+// 加载任务列表
 async function loadTasks() {
     try {
         const tasks = await apiRequest('/tasks/');
@@ -48,7 +81,7 @@ async function loadTasks() {
 function renderTasks(tasks) {
     const container = document.getElementById('task-list');
     if (tasks.length === 0) {
-        container.innerHTML = '<div class="loading">暂无任务</div>';
+        container.innerHTML = '<div class="loading">暂无任务，创建一个吧！</div>';
         return;
     }
     container.innerHTML = tasks.map(task => renderTaskCard(task)).join('');
@@ -60,8 +93,7 @@ function renderTaskCard(task) {
     const statusClass = `status-${task.status}`;
     const dueDate = task.due_date ? new Date(task.due_date).toLocaleString() : '无截止日期';
 
-    // 生成执行者选项下拉框
-    const userOptions = allUsers.map(user =>
+    const userOptions = currentPageUsers.map(user =>
         `<option value="${user.id}">${escapeHtml(user.username)}</option>`
     ).join('');
 
@@ -79,8 +111,8 @@ function renderTaskCard(task) {
             <div class="task-status ${statusClass}">${task.status}</div>
             <div class="assignees">
                 执行者: 
-                ${task.assignees && task.assignees.length ? 
-                    task.assignees.map(a => `<span class="assignee-tag">${escapeHtml(a.username)}</span>`).join('') : 
+                ${task.assignees && task.assignees.length ?
+                    task.assignees.map(a => `<span class="assignee-tag">${escapeHtml(a.username)}</span>`).join('') :
                     '暂无'}
             </div>
             <div class="task-actions">
@@ -152,7 +184,6 @@ async function createTask() {
                 due_date: dueDate ? new Date(dueDate).toISOString() : null
             })
         });
-        // 重新加载任务列表
         await loadTasks();
     } catch (err) {
         alert('创建任务失败: ' + err.message);
@@ -165,7 +196,6 @@ async function updateTask(taskId, updates) {
             method: 'PATCH',
             body: JSON.stringify(updates)
         });
-        // 局部更新（可选），这里简单重新加载全部
         await loadTasks();
     } catch (err) {
         alert('更新任务失败: ' + err.message);
@@ -201,6 +231,41 @@ async function deleteTask(taskId) {
     } catch (err) {
         alert('删除任务失败: ' + err.message);
     }
+}
+
+// ---------- 通知模块 ----------
+async function loadUnreadCount() {
+    try {
+        const count = await apiRequest('/notifications/unread-count');
+        document.getElementById('unread-count').textContent = count;
+    } catch (err) {
+        console.error('加载未读数失败', err);
+    }
+}
+
+function connectWebSocket() {
+    const token = localStorage.getItem('access_token');
+    if (!token) return;
+    const wsUrl = `ws://localhost:8000/ws/notifications?token=${encodeURIComponent(token)}`;
+    ws = new WebSocket(wsUrl);
+    ws.onmessage = (event) => {
+        try {
+            const data = JSON.parse(event.data);
+            loadUnreadCount();
+            alert(`🔔 新通知: ${data.message || '您有一条新通知'}`);
+        } catch (e) {
+            console.error('WebSocket 消息解析失败', e);
+        }
+    };
+    ws.onclose = () => console.log('WebSocket 关闭');
+    ws.onerror = (err) => console.error('WebSocket 错误', err);
+}
+
+// 退出登录
+function logout() {
+    if (ws) ws.close();
+    localStorage.removeItem('access_token');
+    window.location.href = '/login.html';
 }
 
 function escapeHtml(unsafe) {

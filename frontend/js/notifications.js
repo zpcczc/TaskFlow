@@ -36,7 +36,7 @@ async function loadNotifications(reset = false) {
 
     isLoading = true;
     try {
-        const notifs = await apiRequest(`/notifications?skip=${offset}&limit=${limit}`);
+        const notifs = await apiRequest(`/notifications/?skip=${offset}&limit=${limit}`);
         if (reset) {
             document.getElementById('notification-list').innerHTML = '';
         }
